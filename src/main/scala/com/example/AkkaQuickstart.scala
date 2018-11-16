@@ -1,93 +1,101 @@
-//#full-example
 package com.example
 
-import akka.actor.{ Actor, ActorLogging, ActorRef, ActorSystem, Props }
+import java.math.BigInteger
 
-//#greeter-companion
-//#greeter-messages
-object Greeter {
-  //#greeter-messages
-  def props(message: String, printerActor: ActorRef): Props = Props(new Greeter(message, printerActor))
-  //#greeter-messages
-  final case class WhoToGreet(who: String)
-  case object Greet
+import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
+
+import scala.collection.mutable.ListBuffer
+import scala.math.min
+
+
+object PasswordSolverWorker {
+  def props(passwords: List[String]): Props = Props(new PasswordSolverWorker(passwords))
+
+  final case class SolvePassword(range: (Int, Int))
+
+  def sha256Hash(hash: String): String = {
+    String.format("%064x", new BigInteger(1, java.security.MessageDigest
+      .getInstance("SHA-256")
+      .digest(hash.getBytes("UTF-8"))))
+  }
+
 }
-//#greeter-messages
-//#greeter-companion
 
-//#greeter-actor
-class Greeter(message: String, printerActor: ActorRef) extends Actor {
-  import Greeter._
-  import Printer._
+class PasswordSolverWorker(passwords: List[String]) extends Actor {
 
-  var greeting = ""
+  import PasswordSolverSupervisor._
+  import PasswordSolverWorker._
 
-  def receive = {
-    case WhoToGreet(who) =>
-      greeting = message + ", " + who
-    case Greet           =>
-      //#greeter-send-message
-      printerActor ! Greeting(greeting)
-      //#greeter-send-message
+  override def receive: Receive = {
+    case SolvePassword(range: (Int, Int)) =>
+      solvePassword(range)
+  }
+
+  def solvePassword(range: (Int, Int)): Unit = {
+    val passwordSet = passwords.toSet
+    for (i <- range._1 to range._2) {
+      val DEBUG = 1
+      val hashValue = sha256Hash(i.toString)
+      if (passwordSet.contains(hashValue)) {
+        context.parent ! PasswordResult(hashValue, i.toString)
+      }
+    }
   }
 }
-//#greeter-actor
 
-//#printer-companion
-//#printer-messages
-object Printer {
-  //#printer-messages
-  def props: Props = Props[Printer]
-  //#printer-messages
-  final case class Greeting(greeting: String)
+object PasswordSolverSupervisor {
+  def props(passwords: List[String]): Props = Props(new PasswordSolverSupervisor(passwords))
+
+  // ToDo: passwordEncrypred maybe as Int -> smaller to send?
+  final case class PasswordResult(passwordHash: String, passwordEncrypted: String)
+
+  final case class StartSolving(numWorker: Int)
+
+  final val passwordRange = 1000000
 }
-//#printer-messages
-//#printer-companion
 
-//#printer-actor
-class Printer extends Actor with ActorLogging {
-  import Printer._
+class PasswordSolverSupervisor(passwords: List[String]) extends Actor with ActorLogging {
 
-  def receive = {
-    case Greeting(greeting) =>
-      log.info("Greeting received (from " + sender() + "): " + greeting)
+  import PasswordSolverSupervisor._
+  import PasswordSolverWorker._
+
+  override def receive: Receive = {
+    case StartSolving(numWorker) =>
+      val baseChunkSize = passwordRange / numWorker
+      val chunkSizeReminder = passwordRange % numWorker
+      for (i <- 1 to numWorker) {
+        val rangeStart = (i - 1) * baseChunkSize + min(i - 1, chunkSizeReminder)
+        val rangeEnd = i * baseChunkSize + min(i, chunkSizeReminder) - 1
+        val worker: ActorRef = context.actorOf(PasswordSolverWorker.props(passwords), "passwordSolverWorker" + i)
+        worker ! SolvePassword((rangeStart, rangeEnd))
+      }
+    case PasswordResult(passwordHash, passwordEncrypted) =>
+      println(s"Got result for $passwordHash: $passwordEncrypted")
   }
 }
-//#printer-actor
 
-//#main-class
 object AkkaQuickstart extends App {
-  import Greeter._
 
-  // Create the 'helloAkka' actor system
-  val system: ActorSystem = ActorSystem("helloAkka")
+  import PasswordSolverSupervisor._
 
-  //#create-actors
-  // Create the printer actor
-  val printer: ActorRef = system.actorOf(Printer.props, "printerActor")
+  val numberOfWorkers = 4
+  val inputFile = "students.csv"
 
-  // Create the 'greeter' actors
-  val howdyGreeter: ActorRef =
-    system.actorOf(Greeter.props("Howdy", printer), "howdyGreeter")
-  val helloGreeter: ActorRef =
-    system.actorOf(Greeter.props("Hello", printer), "helloGreeter")
-  val goodDayGreeter: ActorRef =
-    system.actorOf(Greeter.props("Good day", printer), "goodDayGreeter")
-  //#create-actors
+  var passwords = new ListBuffer[String]()
 
-  //#main-send-messages
-  howdyGreeter ! WhoToGreet("Akka")
-  howdyGreeter ! Greet
+  val bufferedSource = io.Source.fromFile(inputFile)
+  for (line <- bufferedSource.getLines().drop(1)) {
+    val cols = line.split(";").map(_.trim)
+    // ToDo: Handle empty line?
+    if (!cols(0).isEmpty) {
+      passwords += cols(2)
+    }
+  }
+  // ToDo: automatic close (with?)
+  bufferedSource.close
 
-  howdyGreeter ! WhoToGreet("Lightbend")
-  howdyGreeter ! Greet
+  val system: ActorSystem = ActorSystem("masterSystem")
 
-  helloGreeter ! WhoToGreet("Scala")
-  helloGreeter ! Greet
-
-  goodDayGreeter ! WhoToGreet("Play")
-  goodDayGreeter ! Greet
-  //#main-send-messages
+  val passwordSolverSupervisor: ActorRef = system.actorOf(PasswordSolverSupervisor.props(passwords = passwords.toList), "passwordSolverSupervisor")
+  passwordSolverSupervisor ! StartSolving(20)
 }
-//#main-class
-//#full-example
