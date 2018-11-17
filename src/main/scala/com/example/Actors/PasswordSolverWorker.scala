@@ -4,7 +4,7 @@ import java.math.BigInteger
 
 import akka.actor.{Actor, Props}
 
-class PasswordSolverWorker(passwords: List[String]) extends Actor {
+class PasswordSolverWorker(passwords: Vector[String]) extends Actor {
 
   import PasswordSolverSupervisor._
   import PasswordSolverWorker._
@@ -27,7 +27,7 @@ class PasswordSolverWorker(passwords: List[String]) extends Actor {
 }
 
 object PasswordSolverWorker {
-  def props(passwords: List[String]): Props = Props(new PasswordSolverWorker(passwords))
+  def props(passwords: Vector[String]): Props = Props(new PasswordSolverWorker(passwords))
 
   final case class SolvePassword(range: (Int, Int))
 

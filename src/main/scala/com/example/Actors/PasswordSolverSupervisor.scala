@@ -4,7 +4,7 @@ import akka.actor.{Actor, ActorLogging, ActorRef, Props}
 
 import scala.math.min
 
-class PasswordSolverSupervisor(passwords: List[String]) extends Actor with ActorLogging {
+class PasswordSolverSupervisor(passwords: Vector[String]) extends Actor with ActorLogging {
 
   import PasswordSolverSupervisor._
   import PasswordSolverWorker._
@@ -25,7 +25,7 @@ class PasswordSolverSupervisor(passwords: List[String]) extends Actor with Actor
 }
 
 object PasswordSolverSupervisor {
-  def props(passwords: List[String]): Props = Props(new PasswordSolverSupervisor(passwords))
+  def props(passwords: Vector[String]): Props = Props(new PasswordSolverSupervisor(passwords))
 
   // ToDo: passwordEncrypred maybe as Int -> smaller to send?
   final case class PasswordResult(passwordHash: String, passwordEncrypted: String)
