@@ -3,11 +3,10 @@ package com.example.Actors
 import java.math.BigInteger
 
 import akka.actor.{Actor, Props}
+import com.example.Actors.PasswordSolverSupervisor.PasswordResult
+import com.example.Actors.PasswordSolverWorker.{SolvePassword, _}
 
 class PasswordSolverWorker(passwords: Vector[String]) extends Actor {
-
-  import PasswordSolverSupervisor._
-  import PasswordSolverWorker._
 
   override def receive: Receive = {
     case SolvePassword(range: (Int, Int)) =>

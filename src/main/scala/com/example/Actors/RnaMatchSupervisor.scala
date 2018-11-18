@@ -4,18 +4,12 @@ import akka.actor.{Actor, ActorRef, Props}
 import com.example.Actors.RnaMatchSupervisor.{MatchingResult, StartMatching}
 import com.example.Actors.RnaMatchWorker.MatchGeneSequence
 
-import scala.math.min
-
 class RnaMatchSupervisor(geneSequences: Vector[String]) extends Actor {
 
   override def receive: Receive = {
     case StartMatching(numWorker) =>
-      val baseChunkSize = geneSequences.length / numWorker
-      val chunkSizeReminder = geneSequences.length % numWorker
-      for (i <- 1 to numWorker) {
-        val rangeStart = (i - 1) * baseChunkSize + min(i - 1, chunkSizeReminder)
-        val rangeEnd = i * baseChunkSize + min(i, chunkSizeReminder) - 1
-        val worker: ActorRef = context.actorOf(RnaMatchWorker.props(geneSequences), "rnaMatchWorker" + i)
+      for ((rangeStart, rangeEnd) <- split_range(geneSequences.length, numWorker)) {
+        val worker: ActorRef = context.actorOf(RnaMatchWorker.props(geneSequences), s"rnaMatchWorker-$rangeStart-$rangeEnd")
         worker ! MatchGeneSequence((rangeStart, rangeEnd))
       }
     case MatchingResult(personId, partnerId) =>

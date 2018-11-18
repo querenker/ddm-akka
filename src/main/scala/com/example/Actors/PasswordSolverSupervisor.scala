@@ -1,22 +1,15 @@
 package com.example.Actors
 
 import akka.actor.{Actor, ActorLogging, ActorRef, Props}
-
-import scala.math.min
+import com.example.Actors.PasswordSolverSupervisor.{PasswordResult, StartSolving, passwordRange}
+import com.example.Actors.PasswordSolverWorker.SolvePassword
 
 class PasswordSolverSupervisor(passwords: Vector[String]) extends Actor with ActorLogging {
 
-  import PasswordSolverSupervisor._
-  import PasswordSolverWorker._
-
   override def receive: Receive = {
     case StartSolving(numWorker) =>
-      val baseChunkSize = passwordRange / numWorker
-      val chunkSizeReminder = passwordRange % numWorker
-      for (i <- 1 to numWorker) {
-        val rangeStart = (i - 1) * baseChunkSize + min(i - 1, chunkSizeReminder)
-        val rangeEnd = i * baseChunkSize + min(i, chunkSizeReminder) - 1
-        val worker: ActorRef = context.actorOf(PasswordSolverWorker.props(passwords), "passwordSolverWorker" + i)
+      for ((rangeStart: Int, rangeEnd: Int) <- split_range(passwordRange, numWorker)) {
+        val worker: ActorRef = context.actorOf(PasswordSolverWorker.props(passwords), s"passwordSolverWorker-$rangeStart-$rangeEnd")
         worker ! SolvePassword((rangeStart, rangeEnd))
       }
     case PasswordResult(passwordHash, passwordEncrypted) =>
