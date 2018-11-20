@@ -1,8 +1,7 @@
 package com.example
 
 import akka.actor.{ActorRef, ActorSystem}
-import com.example.Actors.PasswordSolverSupervisor.StartSolving
-import com.example.Actors.RnaMatchSupervisor.StartMatching
+import com.example.Actors.Supervisor.{StartMatching, StartSolving}
 
 import scala.collection.mutable.ListBuffer
 
@@ -28,8 +27,7 @@ object AkkaQuickstart extends App {
 
   val system: ActorSystem = ActorSystem("masterSystem")
 
-  val passwordSolverSupervisor: ActorRef = system.actorOf(Actors.PasswordSolverSupervisor.props(passwords = passwords.toVector), "passwordSolverSupervisor")
-  passwordSolverSupervisor ! StartSolving(20)
-  val rnaMatchSupervisor = system.actorOf(Actors.RnaMatchSupervisor.props(geneSequences = geneSequences.toVector), "rnaMatchSupervisor")
-  rnaMatchSupervisor ! StartMatching(20)
+  val supervisor: ActorRef = system.actorOf(Actors.Supervisor.props(passwords = passwords.toVector, geneSequences = geneSequences.toVector), "passwordSolverSupervisor")
+  supervisor ! StartSolving(20)
+  supervisor ! StartMatching(20)
 }

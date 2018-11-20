@@ -1,8 +1,8 @@
 package com.example.Actors
 
 import akka.actor.{Actor, Props}
-import com.example.Actors.RnaMatchSupervisor.MatchingResult
 import com.example.Actors.RnaMatchWorker.MatchGeneSequence
+import com.example.Actors.Supervisor.MatchingResult
 import gstlib.GeneralizedSuffixTree
 
 class RnaMatchWorker(geneSequences: Vector[String]) extends Actor {

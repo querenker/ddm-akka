@@ -3,8 +3,8 @@ package com.example.Actors
 import java.math.BigInteger
 
 import akka.actor.{Actor, Props}
-import com.example.Actors.PasswordSolverSupervisor.PasswordResult
 import com.example.Actors.PasswordSolverWorker.{SolvePassword, _}
+import com.example.Actors.Supervisor.PasswordResult
 
 class PasswordSolverWorker(passwords: Vector[String]) extends Actor {
 
@@ -16,7 +16,6 @@ class PasswordSolverWorker(passwords: Vector[String]) extends Actor {
   def solvePassword(range: (Int, Int)): Unit = {
     val passwordSet = passwords.toSet
     for (i <- range._1 to range._2) {
-      val DEBUG = 1
       val hashValue = sha256Hash(i.toString)
       if (passwordSet.contains(hashValue)) {
         context.parent ! PasswordResult(hashValue, i.toString)
