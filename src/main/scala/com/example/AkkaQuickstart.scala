@@ -56,9 +56,7 @@ object AkkaQuickstart extends App {
     val system = ActorSystem("MasterSystem", config)
 
     println("Start TaskManager")
-    val taskManager = system.actorOf(Actors.TaskManager.props(passwords = passwords.toVector, geneSequences = geneSequences.toVector), "taskManager")
-    //supervisor ! StartSolving(20)
-    //supervisor ! StartMatching(20)
+    val taskManager = system.actorOf(Actors.TaskManager.props(passwords = passwords.toVector, geneSequences = geneSequences.toVector, numSupervisor = argumentConf.slaves()), "taskManager")
   }
 
   def startSlave(argumentConf: SlaveConf): Unit = {

@@ -16,10 +16,6 @@ class Supervisor(masterIp: String, numWorkers: Int) extends Actor {
   }
 
   override def receive: Receive = {
-    case PasswordResult(passwordHash, passwordEncrypted) =>
-      println(s"Got result for $passwordHash: $passwordEncrypted")
-    case MatchingResult(personId, partnerId) =>
-      println(s"${personId}s best partner is $partnerId")
     case InitSupervisor(passwords, geneSequences) =>
       for (_ <- 1 to numWorkers) {
         context.actorOf(Worker.props(passwords, geneSequences, masterActor))
@@ -29,11 +25,8 @@ class Supervisor(masterIp: String, numWorkers: Int) extends Actor {
 
 object Supervisor {
 
-  final case class PasswordResult(passwordHash: String, passwordEncrypted: String)
-
   def props(masterIp: String, numWorkers: Int): Props = Props(new Supervisor(masterIp, numWorkers))
 
-  final case class MatchingResult(personId: Int, partnerId: Int)
 
   // ToDo: no leading zeros
   final val passwordRange = 1000000

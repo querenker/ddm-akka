@@ -3,8 +3,7 @@ package com.example.Actors
 import java.math.BigInteger
 
 import akka.actor.{Actor, ActorSelection, Props}
-import com.example.Actors.Supervisor.{MatchingResult, PasswordResult}
-import com.example.Actors.TaskManager.RegisterWorker
+import com.example.Actors.TaskManager.{MatchingResult, PasswordResult, RegisterWorker}
 import com.example.Actors.Worker._
 import gstlib.GeneralizedSuffixTree
 
@@ -26,7 +25,7 @@ class Worker(passwords: Vector[String], geneSequences: Vector[String], masterAct
     for (i <- range._1 to range._2) {
       val hashValue = sha256Hash(i.toString)
       if (passwordSet.contains(hashValue)) {
-        context.parent ! PasswordResult(hashValue, i.toString)
+        masterActor ! PasswordResult(hashValue, i.toString)
       }
     }
   }
@@ -39,7 +38,7 @@ class Worker(passwords: Vector[String], geneSequences: Vector[String], masterAct
       val resultSet = test.head._3
       val resultIndex = resultSet.toList.head._1
       val partnerId = resultIndex + 1 + (resultIndex >= i).compare(false)
-      context.parent ! MatchingResult(i + 1, partnerId)
+      masterActor ! MatchingResult(i + 1, partnerId)
     }
   }
 }
@@ -54,7 +53,7 @@ object Worker {
 
   def props(passwords: Vector[String], geneSequences: Vector[String], masterActor: ActorSelection): Props = Props(new Worker(passwords, geneSequences, masterActor))
 
-  final case class SolvePassword(range: (Int, Int))
+  final case class SolvePassword(range: (Int, Int)) extends Task
 
-  final case class MatchGeneSequence(range: (Int, Int))
+  final case class MatchGeneSequence(range: (Int, Int)) extends Task
 }

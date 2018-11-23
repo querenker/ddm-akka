@@ -1,21 +1,21 @@
 package com.example.Actors
 
 import akka.actor.{Actor, ActorRef, Props}
-import com.example.Actors.Supervisor.{InitSupervisor, MatchingResult}
+import com.example.Actors.Supervisor.InitSupervisor
 import com.example.Actors.TaskManager.{RegisterWorker, _}
 import com.example.Actors.Worker.{MatchGeneSequence, SolvePassword}
 
 import scala.collection.mutable
 import scala.math.min
 
-class TaskManager(passwords: Vector[String], geneSequences: Vector[String]) extends Actor {
+class TaskManager(passwords: Vector[String], geneSequences: Vector[String], numSupervisor: Int) extends Actor {
 
   // ToDo: avoid mutable state in actors
   private val workers = new mutable.ListBuffer[ActorRef]()
   // ToDo: replace any
-  private val tasks = new mutable.Queue[Any]()
+  private val tasks = new mutable.Queue[Task]()
 
-  private var numMissingSupervisor = 0
+  private var numMissingSupervisor = numSupervisor
   private var numWorkersToWait = 0
 
   override def preStart(): Unit = {
@@ -36,7 +36,8 @@ class TaskManager(passwords: Vector[String], geneSequences: Vector[String]) exte
   }
 
   override def receive: Receive = {
-    case msg: String => println(s"TaskManager: received message $msg")
+    case msg: String =>
+      println(s"TaskManager received message: $msg")
     case RegisterSupervisor(numWorkers) =>
       numMissingSupervisor -= 1
       numWorkersToWait += numWorkers
@@ -52,18 +53,26 @@ class TaskManager(passwords: Vector[String], geneSequences: Vector[String]) exte
           case 1 => sendTask(worker)
         }
       }
+    case PasswordResult(passwordHash, passwordEncrypted) =>
+      println(s"Got result for $passwordHash: $passwordEncrypted")
+      sendTask(sender())
+    case MatchingResult(personId, partnerId) =>
+      println(s"${personId}s best partner is $partnerId")
+      sendTask(sender())
 
   }
 
   def startDelegating(): Unit = {
     for (worker <- workers) {
-      worker ! MatchingResult(42, 42)
+      worker ! tasks.dequeue()
     }
   }
 
   def sendTask(worker: ActorRef): Unit = {
     //ToDo: Handle case if queue is empty
-    worker ! tasks.dequeue()
+    if (tasks.nonEmpty) {
+      worker ! tasks.dequeue()
+    }
   }
 }
 
@@ -72,8 +81,6 @@ object TaskManager {
   final val numPasswordTasks = 20
   final val numGeneMatchingTasks = 20
   final val passwordRange = 1000000
-
-  def props(passwords: Vector[String], geneSequences: Vector[String]): Props = Props(new TaskManager(passwords, geneSequences))
 
   def split_range(rangeEnd: Int, numSplits: Int): Seq[(Int, Int)] = {
     val baseChunkSize = rangeEnd / numSplits
@@ -85,7 +92,13 @@ object TaskManager {
     }
   }
 
+  def props(passwords: Vector[String], geneSequences: Vector[String], numSupervisor: Int): Props = Props(new TaskManager(passwords, geneSequences, numSupervisor))
+
+  final case class PasswordResult(passwordHash: String, passwordEncrypted: String)
+
   final case class RegisterWorker()
 
   final case class RegisterSupervisor(numWorkers: Int)
+
+  final case class MatchingResult(personId: Int, partnerId: Int)
 }
