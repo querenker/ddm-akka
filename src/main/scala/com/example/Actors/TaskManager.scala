@@ -4,7 +4,7 @@ import akka.actor.{Actor, Props}
 
 class TaskManager extends Actor {
   override def receive: Receive = {
-    case msg: String => println("TaskManager: received message $msg")
+    case msg: String => println(s"TaskManager: received message $msg")
   }
 }
 

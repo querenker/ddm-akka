@@ -2,14 +2,42 @@ package com.example
 
 import akka.actor.ActorSystem
 import com.typesafe.config.ConfigFactory
+import org.rogach.scallop.ScallopConf
 
 import scala.collection.mutable.ListBuffer
 
+
+class MasterConf(arguments: Seq[String]) extends ScallopConf(arguments) {
+  val workers = opt[Int](required = true, descr = "number of local workers")
+  val slaves = opt[Int](required = true, descr = "number of slaves to wait for")
+  val input = opt[String](required = true, descr = "input data file")
+  verify()
+}
+
+class SlaveConf(arguments: Seq[String]) extends ScallopConf(arguments) {
+  val workers = opt[Int](required = true, descr = "number of local workers")
+  val host = opt[String](required = true, descr = "IP address of the master system")
+  verify()
+}
+
 object AkkaQuickstart extends App {
 
-  def startMaster(): Unit = {
-    val numberOfWorkers = 4
-    val inputFile = "students.csv"
+  override def main(args: Array[String]): Unit = {
+
+    if (args.length < 1) {
+      throw new WrongCommandLineArgumentError
+    } else if (args.head == "master") {
+      startMaster(new MasterConf(args.drop(1)))
+    } else if (args.head == "slave") {
+      startSlave(new SlaveConf(args.drop(1)))
+    } else {
+      throw new WrongCommandLineArgumentError
+    }
+  }
+
+  def startMaster(argumentConf: MasterConf): Unit = {
+    val numberOfWorkers = argumentConf.workers()
+    val inputFile = argumentConf.input()
 
     var passwords = new ListBuffer[String]()
     var geneSequences = new ListBuffer[String]()
@@ -36,21 +64,13 @@ object AkkaQuickstart extends App {
     //supervisor ! StartMatching(20)
   }
 
-  def startSlave(): Unit = {
+  def startSlave(argumentConf: SlaveConf): Unit = {
     val config = ConfigFactory.load.getConfig("SlaveSystem")
     val system = ActorSystem("SlaveSystem", config)
     val worker = system.actorOf(Actors.Worker.props(), "worker")
   }
 
-  override def main(args: Array[String]): Unit = {
-    if (args(0) == "Master") {
-      startMaster()
-    }
-    else {
-      startSlave()
-    }
-  }
-
-
+  class WrongCommandLineArgumentError extends RuntimeException("the first command line argument has to be `master` or `slave`")
 
 }
+

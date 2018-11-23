@@ -4,8 +4,6 @@ version := "1.0"
 
 scalaVersion := "2.12.6"
 
-Compile / mainClass := Some("com.example.AkkaQuickstart")
-
 lazy val akkaVersion = "2.5.18"
 
 libraryDependencies ++= Seq(
@@ -13,5 +11,6 @@ libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-testkit" % akkaVersion,
   "org.scalatest" %% "scalatest" % "3.0.5" % "test",
   "com.github.guillaumedd" %% "gstlib" % "0.1.2",
-  "com.typesafe.akka" %% "akka-remote" % akkaVersion
+  "com.typesafe.akka" %% "akka-remote" % akkaVersion,
+  "org.rogach" %% "scallop" % "3.1.5"
 )
