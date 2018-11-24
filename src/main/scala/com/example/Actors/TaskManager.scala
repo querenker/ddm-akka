@@ -3,7 +3,7 @@ package com.example.Actors
 import akka.actor.{Actor, ActorRef, Props}
 import com.example.Actors.Supervisor.InitSupervisor
 import com.example.Actors.TaskManager.{RegisterWorker, _}
-import com.example.Actors.Worker.{CheckLinearCombination, MatchGeneSequence, SolvePassword}
+import com.example.Actors.Worker.{CheckLinearCombination, MatchGeneSequence, SolvePassword, StartMining}
 
 import scala.collection.mutable
 import scala.math.min
@@ -16,18 +16,24 @@ class TaskManager(passwords: Vector[String], geneSequences: Vector[String], numS
   // ToDo: replace any
   private val tasks = new mutable.Queue[Task]()
 
-  private val passwordResults = Array.ofDim[Int](passwords.length)
   private val numLinearCombination = 1L << passwords.length
 
   private var numMissingSupervisor = numSupervisor
   private var numWorkersToWait = 0
+
+  private val passwordResults = Array.ofDim[Int](passwords.length)
   private var missingPasswords = passwords.length
 
+  private val matchingResults = Array.ofDim[Int](passwords.length)
+
   private var linearCombinationFound = false
+  private var combinationResult = 0L
+
+  private var missingHashValues = passwords.length
 
   override def preStart(): Unit = {
     preparePasswordTasks()
-    // prepareGeneMatchingTasks()
+    prepareGeneMatchingTasks()
   }
 
   def preparePasswordTasks(): Unit = {
@@ -68,22 +74,36 @@ class TaskManager(passwords: Vector[String], geneSequences: Vector[String], numS
       sendTask(sender())
     case MatchingResult(personId, partnerId) =>
       println(s"${personId}s best partner is $partnerId")
+      matchingResults(personId - 1) = partnerId
       sendTask(sender())
     case LinearCombinationResult(combination: Long) =>
       println(s"Linear Combination found: $combination")
       if (!linearCombinationFound) {
         linearCombinationFound = true
+        combinationResult = combination
         // ToDo: better way to empty queue?
         tasks.dequeueAll(_ => true)
         prepareHashTasks()
+      } else {
+        sendTask(sender())
       }
+    case HashMiningResult(personId, hash) =>
+      println(s"Hash for $personId found: $hash")
+      missingHashValues -= 1
+      if (missingHashValues == 0) {
+        println("FINISHED!!!!!")
+      }
+      sendTask(sender())
     case NextTask() =>
       sendTask(sender())
 
   }
 
   def prepareHashTasks(): Unit = {
-
+    for (i <- passwords.indices) {
+      tasks += StartMining(i + 1, matchingResults(i), ((combinationResult >> i) & 1).toInt)
+    }
+    startDelegating()
   }
 
   def prepareLinearCombinationTasks(): Unit = {
@@ -95,7 +115,7 @@ class TaskManager(passwords: Vector[String], geneSequences: Vector[String], numS
 
   def startDelegating(): Unit = {
     for (worker <- workers) {
-      worker ! tasks.dequeue()
+      sendTask(worker)
     }
   }
 
@@ -147,6 +167,8 @@ object TaskManager {
   final case class MatchingResult(personId: Int, partnerId: Int)
 
   final case class LinearCombinationResult(combination: Long)
+
+  final case class HashMiningResult(personId: Int, hash: String)
 
   final case class NextTask()
 }

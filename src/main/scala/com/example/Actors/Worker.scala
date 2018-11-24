@@ -8,6 +8,7 @@ import com.example.Actors.Worker._
 import gstlib.GeneralizedSuffixTree
 
 import scala.collection.immutable.ListMap
+import scala.util.Random
 
 class Worker(passwords: Vector[String], geneSequences: Vector[String], masterActor: ActorSelection) extends Actor {
 
@@ -25,6 +26,8 @@ class Worker(passwords: Vector[String], geneSequences: Vector[String], masterAct
     case CheckLinearCombination(range, crackedPasswords, targetSum) =>
       println("Hello Linear Combination")
       checkLinearCombination(range, crackedPasswords, targetSum)
+    case StartMining(personId, partnerId, prefix) =>
+      startMining(personId, partnerId, prefix)
   }
 
   def solvePassword(range: (Int, Int)): Unit = {
@@ -61,6 +64,18 @@ class Worker(passwords: Vector[String], geneSequences: Vector[String], masterAct
     }
     masterActor ! NextTask()
   }
+
+  def startMining(personId: Int, partnerId: Int, prefix: Int): Unit = {
+    val prefixString = if (prefix == 1) "11111" else "00000"
+    while (true) {
+      val hash = sha256Hash((partnerId + Random.nextInt()).toString)
+      if (hash.startsWith(prefixString)) {
+        masterActor ! HashMiningResult(personId, hash)
+        return
+      }
+    }
+  }
+
 }
 
 object Worker {
@@ -78,4 +93,6 @@ object Worker {
   final case class MatchGeneSequence(range: (Int, Int)) extends Task
 
   final case class CheckLinearCombination(range: (Long, Long), crackedPasswords: Array[Int], targetSum: Long) extends Task
+
+  final case class StartMining(personId: Int, partnerId: Int, prefix: Int) extends Task
 }
