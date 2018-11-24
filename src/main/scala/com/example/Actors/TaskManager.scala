@@ -7,6 +7,7 @@ import com.example.Actors.Worker.{CheckLinearCombination, MatchGeneSequence, Sol
 
 import scala.collection.mutable
 import scala.math.min
+import scala.util.Random.shuffle
 
 class TaskManager(passwords: Vector[String], geneSequences: Vector[String], numSupervisor: Int) extends Actor {
 
@@ -21,6 +22,8 @@ class TaskManager(passwords: Vector[String], geneSequences: Vector[String], numS
   private var numMissingSupervisor = numSupervisor
   private var numWorkersToWait = 0
   private var missingPasswords = passwords.length
+
+  private var linearCombinationFound = false
 
   override def preStart(): Unit = {
     preparePasswordTasks()
@@ -68,14 +71,24 @@ class TaskManager(passwords: Vector[String], geneSequences: Vector[String], numS
       sendTask(sender())
     case LinearCombinationResult(combination: Long) =>
       println(s"Linear Combination found: $combination")
+      if (!linearCombinationFound) {
+        linearCombinationFound = true
+        // ToDo: better way to empty queue?
+        tasks.dequeueAll(_ => true)
+        prepareHashTasks()
+      }
     case NextTask() =>
       sendTask(sender())
 
   }
 
+  def prepareHashTasks(): Unit = {
+
+  }
+
   def prepareLinearCombinationTasks(): Unit = {
     val targetSum: Long = passwordResults.sum / 2
-    for ((rangeStart, rangeEnd) <- split_range_long(numLinearCombination, numLinearCombinationTasks)) {
+    for ((rangeStart, rangeEnd) <- shuffle(split_range_long(numLinearCombination, numLinearCombinationTasks))) {
       tasks += CheckLinearCombination((rangeStart, rangeEnd), passwordResults, targetSum)
     }
   }
