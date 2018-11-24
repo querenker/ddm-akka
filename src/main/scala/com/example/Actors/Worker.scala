@@ -3,9 +3,11 @@ package com.example.Actors
 import java.math.BigInteger
 
 import akka.actor.{Actor, ActorSelection, Props}
-import com.example.Actors.TaskManager.{MatchingResult, PasswordResult, RegisterWorker}
+import com.example.Actors.TaskManager._
 import com.example.Actors.Worker._
 import gstlib.GeneralizedSuffixTree
+
+import scala.collection.immutable.ListMap
 
 class Worker(passwords: Vector[String], geneSequences: Vector[String], masterActor: ActorSelection) extends Actor {
 
@@ -13,11 +15,16 @@ class Worker(passwords: Vector[String], geneSequences: Vector[String], masterAct
     masterActor ! RegisterWorker()
   }
 
+  private val hashToIndex = ListMap(passwords.zipWithIndex: _*)
+
   override def receive: Receive = {
     case SolvePassword(range: (Int, Int)) =>
       solvePassword(range)
     case MatchGeneSequence(range: (Int, Int)) =>
       matchGeneSequence(range)
+    case CheckLinearCombination(range, crackedPasswords, targetSum) =>
+      println("Hello Linear Combination")
+      checkLinearCombination(range, crackedPasswords, targetSum)
   }
 
   def solvePassword(range: (Int, Int)): Unit = {
@@ -25,7 +32,7 @@ class Worker(passwords: Vector[String], geneSequences: Vector[String], masterAct
     for (i <- range._1 to range._2) {
       val hashValue = sha256Hash(i.toString)
       if (passwordSet.contains(hashValue)) {
-        masterActor ! PasswordResult(hashValue, i.toString)
+        masterActor ! PasswordResult(hashToIndex(hashValue) + 1, i)
       }
     }
   }
@@ -40,6 +47,19 @@ class Worker(passwords: Vector[String], geneSequences: Vector[String], masterAct
       val partnerId = resultIndex + 1 + (resultIndex >= i).compare(false)
       masterActor ! MatchingResult(i + 1, partnerId)
     }
+  }
+
+  def checkLinearCombination(range: (Long, Long), crackedPasswords: Array[Int], targetSum: Long): Unit = {
+    var i: Long = range._1
+    while (i < range._2) {
+      i += 1
+      val valueSum = crackedPasswords.indices.foldLeft(0L)((sum: Long, x: Int) => sum + ((i >> x) & 1) * crackedPasswords(x))
+      if (valueSum == targetSum) {
+        masterActor ! LinearCombinationResult(i)
+        return
+      }
+    }
+    masterActor ! NextTask()
   }
 }
 
@@ -56,4 +76,6 @@ object Worker {
   final case class SolvePassword(range: (Int, Int)) extends Task
 
   final case class MatchGeneSequence(range: (Int, Int)) extends Task
+
+  final case class CheckLinearCombination(range: (Long, Long), crackedPasswords: Array[Int], targetSum: Long) extends Task
 }
