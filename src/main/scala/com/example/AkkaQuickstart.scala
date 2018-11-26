@@ -56,7 +56,7 @@ object AkkaQuickstart extends App {
     val system = ActorSystem("MasterSystem", config)
 
     println("Start TaskManager")
-    system.actorOf(Actors.TaskManager.props(passwords.toVector, geneSequences.toVector, argumentConf.slaves()), "taskManager")
+    system.actorOf(Actors.TaskManager.props(passwords.toVector, geneSequences.toVector, argumentConf.slaves(), argumentConf.workers()), "taskManager")
     for (i <- 1 to argumentConf.workers()) {
       system.actorOf(Actors.Worker.props(passwords.toVector, geneSequences.toVector, system.actorSelection("/user/taskManager")))
     }

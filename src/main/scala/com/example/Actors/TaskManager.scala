@@ -9,7 +9,7 @@ import scala.collection.mutable
 import scala.math.min
 import scala.util.Random.shuffle
 
-class TaskManager(passwords: Vector[String], geneSequences: Vector[String], numSupervisor: Int) extends Actor {
+class TaskManager(passwords: Vector[String], geneSequences: Vector[String], numSupervisor: Int, numMasterWorkers: Int) extends Actor {
 
   // ToDo: avoid mutable state in actors
   private val workers = new mutable.ListBuffer[ActorRef]()
@@ -19,7 +19,7 @@ class TaskManager(passwords: Vector[String], geneSequences: Vector[String], numS
   private val numLinearCombination = 1L << passwords.length
 
   private var numMissingSupervisor = numSupervisor
-  private var numWorkersToWait = 0
+  private var numWorkersToWait = numMasterWorkers
 
   private val passwordResults = Array.ofDim[Int](passwords.length)
   private var missingPasswords = passwords.length
@@ -160,7 +160,6 @@ object TaskManager {
     }
   }
 
-  def props(passwords: Vector[String], geneSequences: Vector[String], numSupervisor: Int): Props = Props(new TaskManager(passwords, geneSequences, numSupervisor))
 
   final case class PasswordResult(userId: Int, passwordEncrypted: Int)
 
@@ -175,4 +174,6 @@ object TaskManager {
   final case class HashMiningResult(personId: Int, hash: String)
 
   final case class NextTask()
+
+  def props(passwords: Vector[String], geneSequences: Vector[String], numSupervisor: Int, numMasterWorkers: Int): Props = Props(new TaskManager(passwords, geneSequences, numSupervisor, numMasterWorkers))
 }
