@@ -31,6 +31,8 @@ class TaskManager(passwords: Vector[String], geneSequences: Vector[String], numS
 
   private var missingHashValues = passwords.length
 
+  private var startTime = 0L
+
   override def preStart(): Unit = {
     preparePasswordTasks()
     prepareGeneMatchingTasks()
@@ -62,7 +64,9 @@ class TaskManager(passwords: Vector[String], geneSequences: Vector[String], numS
       println(s"Add $worker to available workers")
       if (numMissingSupervisor < 1) {
         Some((workers.length compare numWorkersToWait).signum) collect {
-          case 0 => startDelegating()
+          case 0 =>
+            startTime = System.currentTimeMillis()
+            startDelegating()
           case 1 => sendTask(worker)
         }
       }
@@ -91,7 +95,7 @@ class TaskManager(passwords: Vector[String], geneSequences: Vector[String], numS
       println(s"Hash for $personId found: $hash")
       missingHashValues -= 1
       if (missingHashValues == 0) {
-        println("FINISHED!!!!!")
+        println(s"Final result computed in ${System.currentTimeMillis() - startTime} milliseconds")
       }
       sendTask(sender())
     case NextTask() =>
