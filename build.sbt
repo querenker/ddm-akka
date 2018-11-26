@@ -1,4 +1,4 @@
-name := "akka-quickstart-scala"
+name := "Vespiquen"
 
 version := "1.0"
 
