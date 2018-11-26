@@ -20,6 +20,8 @@ class Supervisor(masterIp: String, numWorkers: Int) extends Actor {
       for (_ <- 1 to numWorkers) {
         context.actorOf(Worker.props(passwords, geneSequences, masterActor))
       }
+    case Terminate() =>
+      context.system.terminate()
   }
 }
 
@@ -42,4 +44,6 @@ object Supervisor {
   }
 
   final case class InitSupervisor(passwords: Vector[String], geneSequences: Vector[String])
+
+  final case class Terminate()
 }

@@ -1,7 +1,7 @@
 package com.example.Actors
 
 import akka.actor.{Actor, ActorRef, Props}
-import com.example.Actors.Supervisor.InitSupervisor
+import com.example.Actors.Supervisor.{InitSupervisor, Terminate}
 import com.example.Actors.TaskManager.{RegisterWorker, _}
 import com.example.Actors.Worker.{CheckLinearCombination, MatchGeneSequence, SolvePassword, StartMining}
 
@@ -13,7 +13,8 @@ class TaskManager(passwords: Vector[String], geneSequences: Vector[String], numS
 
   // ToDo: avoid mutable state in actors
   private val workers = new mutable.ListBuffer[ActorRef]()
-  // ToDo: replace any
+  private val supervisors = new mutable.ListBuffer[ActorRef]()
+
   private val tasks = new mutable.Queue[Task]()
 
   private val numLinearCombination = 1L << passwords.length
@@ -54,6 +55,7 @@ class TaskManager(passwords: Vector[String], geneSequences: Vector[String], numS
     case RegisterSupervisor(numWorkers) =>
       numMissingSupervisor -= 1
       numWorkersToWait += numWorkers
+      supervisors.append(sender())
       // println(s"Supervisor with $numWorkers registered")
       sender() ! InitSupervisor(passwords, geneSequences)
     case RegisterWorker() =>
@@ -94,6 +96,10 @@ class TaskManager(passwords: Vector[String], geneSequences: Vector[String], numS
       println(s"Hash for $personId found: $hash")
       if (missingHashValues == 0) {
         println(s"Final result computed in ${System.currentTimeMillis() - startTime} milliseconds")
+        for (supervisor <- supervisors) {
+          supervisor ! Terminate()
+        }
+        context.system.terminate()
       }
       sendTask(sender())
     case NextTask() =>
