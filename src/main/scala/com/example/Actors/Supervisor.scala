@@ -11,7 +11,7 @@ class Supervisor(masterIp: String, numWorkers: Int) extends Actor {
   val masterActor: ActorSelection = context.actorSelection(s"akka.tcp://MasterSystem@$masterIp:5150/user/taskManager")
 
   override def preStart(): Unit = {
-    println("Hello from remote")
+    // println("Hello from remote")
     masterActor ! RegisterSupervisor(numWorkers)
   }
 

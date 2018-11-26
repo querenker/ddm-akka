@@ -51,17 +51,15 @@ class TaskManager(passwords: Vector[String], geneSequences: Vector[String], numS
   }
 
   override def receive: Receive = {
-    case msg: String =>
-      println(s"TaskManager received message: $msg")
     case RegisterSupervisor(numWorkers) =>
       numMissingSupervisor -= 1
       numWorkersToWait += numWorkers
-      println(s"Supervisor with $numWorkers registered")
+      // println(s"Supervisor with $numWorkers registered")
       sender() ! InitSupervisor(passwords, geneSequences)
     case RegisterWorker() =>
       val worker = sender()
       workers += worker
-      println(s"Add $worker to available workers")
+      // println(s"Add $worker to available workers")
       if (numMissingSupervisor < 1) {
         Some((workers.length compare numWorkersToWait).signum) collect {
           case 0 =>
@@ -71,17 +69,17 @@ class TaskManager(passwords: Vector[String], geneSequences: Vector[String], numS
         }
       }
     case PasswordResult(userId, passwordEncrypted) =>
-      println(s"Got result for $userId: $passwordEncrypted")
+      // println(s"Got result for $userId: $passwordEncrypted")
       passwordResults(userId - 1) = passwordEncrypted
       missingPasswords -= 1
       if (missingPasswords < 1) prepareLinearCombinationTasks()
       sendTask(sender())
     case MatchingResult(personId, partnerId) =>
-      println(s"${personId}s best partner is $partnerId")
+      // println(s"${personId}s best partner is $partnerId")
       matchingResults(personId - 1) = partnerId
       sendTask(sender())
     case LinearCombinationResult(combination: Long) =>
-      println(s"Linear Combination found: $combination")
+      // println(s"Linear Combination found: $combination")
       if (!linearCombinationFound) {
         linearCombinationFound = true
         combinationResult = combination
@@ -92,8 +90,8 @@ class TaskManager(passwords: Vector[String], geneSequences: Vector[String], numS
         sendTask(sender())
       }
     case HashMiningResult(personId, hash) =>
-      println(s"Hash for $personId found: $hash")
       missingHashValues -= 1
+      println(s"Hash for $personId found: $hash")
       if (missingHashValues == 0) {
         println(s"Final result computed in ${System.currentTimeMillis() - startTime} milliseconds")
       }

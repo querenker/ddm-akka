@@ -24,7 +24,7 @@ class Worker(passwords: Vector[String], geneSequences: Vector[String], masterAct
     case MatchGeneSequence(range: (Int, Int)) =>
       matchGeneSequence(range)
     case CheckLinearCombination(range, crackedPasswords, targetSum) =>
-      println("Hello Linear Combination")
+      // println("Hello Linear Combination")
       checkLinearCombination(range, crackedPasswords, targetSum)
     case StartMining(personId, partnerId, prefix) =>
       startMining(personId, partnerId, prefix)
